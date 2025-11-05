@@ -1,12 +1,21 @@
+
 import { body, validationResult } from 'express-validator';
 
 // Validaciones para registrar usuario
 export const validateUserRegistration = [
-  body('email').isEmail().withMessage('El email no es válido'),
+  body('name')
+    .notEmpty()
+    .withMessage('El nombre es obligatorio')
+    .isLength({ min: 2, max: 50 })
+    .withMessage('El nombre debe tener entre 2 y 50 caracteres'),
+
+  body('email')
+    .isEmail()
+    .withMessage('El email no es válido'),
+
   body('password')
     .isLength({ min: 8 })
     .withMessage('La contraseña debe tener al menos 8 caracteres'),
-  body('nombre').notEmpty().withMessage('El nombre es obligatorio'),
 
   // Middleware final que chequea errores
   (req, res, next) => {
@@ -17,3 +26,4 @@ export const validateUserRegistration = [
     next();
   },
 ];
+
