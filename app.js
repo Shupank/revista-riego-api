@@ -1,99 +1,65 @@
-// app.js
 import express from 'express';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
-import mongoSanitize from 'express-mongo-sanitize';
-import xssClean from 'xss-clean';
-import hpp from 'hpp';
-import compression from 'compression';
-import morgan from 'morgan';
+import dotenv from 'dotenv'; 
 import cors from 'cors';
-import dotenv from 'dotenv';
-import connectDB from './src/config/db.js';
+import connectDB from './src/config/db.js'; // Conexión a DB
 
-// Rutas
+// **********************************************
+// PASO CRÍTICO: CARGAR VARIABLES DE ENTORNO ANTES DE USARLAS
+dotenv.config(); 
+// **********************************************
+
+// Importación de rutas
 import userRoutes from './src/routes/userRoutes.js';
 import productRoutes from './src/routes/productRoutes.js';
 import orderRoutes from './src/routes/orderRoutes.js';
-
-
-// Cargar variables de entorno
-dotenv.config();
+import authRoutes from './src/routes/authRoutes.js'; // 1. IMPORTACIÓN DEL ROUTER DE AUTENTICACIÓN
 
 const app = express();
 
-// Conectar a MongoDB y arrancar servidor solo si se conecta
-const PORT = process.env.PORT || 3000;
-connectDB()
-  .then(() => {
-    console.log('✅ MongoDB conectado');
+// 1. MIDDLEWARES GLOBALES
+app.use(cors());
+app.use(express.json()); 
 
-    // Logging solo en desarrollo
-    if (process.env.NODE_ENV !== 'production') {
-      app.use(morgan('dev'));
-    }
+// 2. RUTAS
+app.use('/api/auth', authRoutes);    // 2. CONEXIÓN PARA /api/auth (Login, Register)
+app.use('/api/users', userRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
 
-    // Middlewares de seguridad
-    app.use(helmet());
-    app.use(express.json({ limit: '10kb' }));
-    app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-    app.use(hpp());
-    app.use(xssClean());
-    app.use(mongoSanitize());
-    app.use(compression());
-
-    // Configuración de CORS
-    const allowedOrigins = (process.env.CORS_ORIGINS || '')
-      .split(',')
-      .map(origin => origin.trim())
-      .filter(Boolean);
-
-    if (allowedOrigins.length) {
-      app.use(cors({ origin: allowedOrigins }));
-    } else {
-      app.use(cors()); // Permite todos los orígenes si no hay variable
-    }
-
-    // Rate limiting
-    const limiter = rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 min
-      max: 100,
-      standardHeaders: true,
-      legacyHeaders: false,
-    });
-    app.use(limiter);
-
-    // Rutas
-    app.use('/api/users', userRoutes);
-    app.use('/api/products', productRoutes);
-    app.use('/api/orders', orderRoutes);
-
-
-    // Captura rutas no definidas
-    app.all('*', (req, res, next) => {
-      res.status(404).json({
+// 3. MANEJO DE ERRORES (404 y Global)
+app.all('*', (req, res, next) => {
+    res.status(404).json({
         status: 'fail',
-        message: `Ruta ${req.originalUrl} no encontrada`,
-      });
+        message: `No se puede encontrar ${req.originalUrl} en este servidor!`,
     });
+});
 
-    // Middleware global de errores
-    app.use((err, req, res, next) => {
-      console.error('Error:', err);
-      res.status(err.statusCode || 500).json({
+app.use((err, req, res, next) => {
+    const statusCode = err.statusCode || 500;
+    const message = err.message || 'Error interno del servidor';
+
+    // Manejo específico del error JWT para dar una respuesta más clara
+    if (err.name === 'JsonWebTokenError') {
+        res.status(401).json({ message: 'Token inválido o expirado' });
+        return;
+    }
+    
+    res.status(statusCode).json({
         status: 'error',
-        message: err.message || 'Error interno del servidor',
-      });
+        message,
     });
+});
 
-    // Iniciar servidor
-    app.listen(PORT, () =>
-      console.log(`🚀 Servidor corriendo en puerto ${PORT}`)
-    );
-  })
-  .catch(error => {
-    console.error('❌ No se pudo conectar a MongoDB:', error);
-    process.exit(1); // Termina la app si no hay DB
-  });
+// **********************************************
+// LÓGICA DE INICIO DEL SERVIDOR 
+const PORT = process.env.PORT || 3000;
+
+// 1. Conectar a la base de datos
+connectDB();
+
+// 2. Iniciar el servidor
+app.listen(PORT, () => {
+    console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+});
 
 export default app;

@@ -1,10 +1,29 @@
+
 import express from 'express';
-import { register, login } from '../controllers/userController.js'; // <-- named exports
+import { 
+    register, 
+    login,
+    getAllUsers, 
+    getUserById, 
+    updateUser,  
+    deleteUser   
+} from '../controllers/userController.js'; 
 
 const router = express.Router();
 
-router.post('/register', register);
-router.post('/login', login);
+// === Rutas de Autenticación ===
+router.post('/register', register); 
+router.post('/login', login);       
 
-export default router; // <-- esto es clave: default export para importarlo en app.js
+// === Rutas CRUD restantes ===
 
+// GET /api/users
+router.get('/', getAllUsers); 
+
+router.route('/:id')
+    .get(getUserById)
+    .put(updateUser) 
+    .delete(deleteUser);
+
+
+export default router;
