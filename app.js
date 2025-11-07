@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv'; 
 import cors from 'cors';
 import connectDB from './src/config/db.js'; // Conexión a DB
+import './src/models/Review.js';
 
 // **********************************************
 // PASO CRÍTICO: CARGAR VARIABLES DE ENTORNO ANTES DE USARLAS
